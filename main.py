@@ -1,5 +1,4 @@
 from idlelib.help_about import AboutDialog
-from multiprocessing.connection import families
 
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel, QGridLayout, \
     QLineEdit, QPushButton, QMainWindow, QTableWidget, QTableWidgetItem, QDialog, \
@@ -106,7 +105,6 @@ class AboutDialog(QMessageBox):
         Feel free to reuse or modify this app.
         Thanks for following. 😊😊😊
         '''
-        self.setFont(QFont(families))
         self.setText(content)
 
 
