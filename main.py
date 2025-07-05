@@ -1,12 +1,18 @@
-from idlelib.help_about import AboutDialog
-
-from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel, QGridLayout, \
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QComboBox, QLabel, QGridLayout, \
     QLineEdit, QPushButton, QMainWindow, QTableWidget, QTableWidgetItem, QDialog, \
-    QComboBox, QToolBar, QStatusBar,QMessageBox
-from PyQt6.QtGui import QAction,QIcon,QFont
+    QToolBar, QStatusBar,QMessageBox
+from PyQt6.QtGui import QAction,QIcon
 from PyQt6.QtCore import Qt
 import sys
 import sqlite3
+
+class DatabaseConnection:
+    def __init__(self,database_path='database.db'):
+        self.database_path = database_path
+
+    def connect(self):
+        connection = sqlite3.connect(self.database_path)
+        return connection
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,6 +23,7 @@ class MainWindow(QMainWindow):
         file_menu_item = self.menuBar().addMenu('&File')
         edit_menu_item = self.menuBar().addMenu('&Edit')
         help_menu_item = self.menuBar().addMenu('&Help')
+        setting_menu_item = self.menuBar().addMenu('&Setting')
 
         add_student_action = QAction(QIcon('icons/add.png'),'Add Student',self)
         add_student_action.triggered.connect(self.insert)
@@ -29,6 +36,11 @@ class MainWindow(QMainWindow):
         about_action = QAction('About',self)
         help_menu_item.addAction(about_action)
         about_action.triggered.connect(self.about)
+
+        theme_action = QAction('Theme',self)
+        setting_menu_item.addAction(theme_action)
+        theme_action.triggered.connect(self.theme)
+
 
         self.table = QTableWidget()
         self.table.setColumnCount(4)
@@ -66,7 +78,7 @@ class MainWindow(QMainWindow):
         self.statusbar.addWidget(delete_button)
 
     def load_data(self):
-        connection = sqlite3.connect('database.db')
+        connection = DatabaseConnection().connect()
         result = connection.execute('SELECT * FROM students')
         self.table.setRowCount(0)
         for row_number, row_data in enumerate(result):
@@ -95,6 +107,94 @@ class MainWindow(QMainWindow):
         dialog = AboutDialog()
         dialog.exec()
 
+    def theme(self):
+        dialog = ThemeDialog()
+        dialog.exec()
+
+class ThemeDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('Theme')
+        self.setFixedWidth(150)
+
+        layout = QGridLayout()
+
+        light = QPushButton('Light')
+        layout.addWidget(light,0,0)
+        light.clicked.connect(self.light)
+
+        dark = QPushButton('Dark')
+        layout.addWidget(dark,1,0)
+        dark.clicked.connect(self.dark)
+
+        self.setLayout(layout)
+
+    def light(self):
+        light_stylesheet = """
+        QWidget {
+            background-color: #f5f5f5;
+            color: #222;
+        }
+        QPushButton {
+            border-radius: 20px;
+            background-color: #e0e0e0;
+            color: #222;
+            border: 1px solid #bbb;
+            padding: 5px;
+            
+        }
+        QPushButton:pressed {
+            background-color: #b3d7ff;
+        }
+        QLineEdit, QComboBox {
+            background-color: #fff;
+            color: #222;
+            border: 1px solid #bbb;
+        }
+        QTableWidget {
+            background-color: #fff;
+            color: #222;
+            gridline-color: #ccc;
+        
+        }
+        QTableWidget::item:selected {
+            background: #b3d7ff;
+            color: #000;
+        }
+        QHeaderView::section {
+            background-color: #e0e0e0;
+            color: #222;
+            border: 1px solid #bbb;
+        }
+        """
+
+        app.setStyleSheet(light_stylesheet)
+    def dark(self):
+        dark_stylesheet = """
+        QWidget {
+            background-color: #2b2b2b;
+            color: #f0f0f0;
+        }
+        QPushButton {
+            border-radius: 20px;
+            background-color: #3c3f41;
+            color: #f0f0f0;
+            border: 1px solid #555;
+            padding: 5px;
+        }
+        QPushButton:pressed {
+            border-radius: 20px;
+            background-color: #b3d7ff;
+            color: #000
+        }
+        QLineEdit, QComboBox {
+            background-color: #232323;
+            color: #f0f0f0;
+            border: 1px solid #555;
+        }
+        """
+
+        app.setStyleSheet(dark_stylesheet)
 
 class AboutDialog(QMessageBox):
     def __init__(self):
@@ -151,7 +251,7 @@ class EditDialog(QDialog):
         self.setLayout(layout)
 
     def update_data(self):
-        connection = sqlite3.connect('database.db')
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         cursor.execute('UPDATE students SET name = ?, course = ?, mobile = ? WHERE id = ?',
                        (self.student_name.text(),
@@ -161,6 +261,7 @@ class EditDialog(QDialog):
         connection.commit()
         cursor.close()
         connection.close()
+        self.close()
         # Refresh data
         main_window.load_data()
 
@@ -188,7 +289,7 @@ class DeleteDialog(QDialog):
         index = main_window.table.currentRow()
         student_id = main_window.table.item(index, 0).text()
 
-        connection = sqlite3.connect('database.db')
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         cursor.execute('DELETE from students WHERE id = ?',(student_id, ))
         connection.commit()
@@ -239,13 +340,14 @@ class InsertDialog(QDialog):
         name = self.student_name.text()
         course = self.course_name.itemText(self.course_name.currentIndex())
         mobile = self.phone_number.text()
-        connection = sqlite3.connect('database.db')
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         cursor.execute('INSERT INTO students (name, course, mobile) VALUES (?, ?, ?)',
                        (name, course, mobile))
         connection.commit()
         cursor.close()
         connection.close()
+        self.close()
         main_window.load_data()
 
 
@@ -273,7 +375,7 @@ class SearchDialog(QDialog):
 
     def name_search(self):
         name = self.search_name.text()
-        connection = sqlite3.connect('database.db')
+        connection = DatabaseConnection().connect()
         cursor = connection.cursor()
         result = cursor.execute('SELECT * FROM students WHERE name = ?', (name,))
         rows = list(result)
